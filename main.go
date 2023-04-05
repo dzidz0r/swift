@@ -1,21 +1,9 @@
 package main
 
 import (
-	"swift/receiver"
-	"swift/sender"
-	"swift/utils"
-	"sync"
+	"swift/listener"
 )
 
 func main() {
-	role := utils.WelcomeScreen()
-	var wg sync.WaitGroup
-
-	serverPort := 1234
-	if role == 1 {
-		sender.StartSender(&wg, serverPort)
-	} else if role == 2 {
-		receiver.StartReceiver(&wg)
-	}
-	wg.Wait()
+	listener.StartListener(5050)
 }
