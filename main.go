@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"swift/broadcaster"
+)
 
 func main() {
-	fmt.Println("This is me again")
+	broadcaster.StartServer()
 }

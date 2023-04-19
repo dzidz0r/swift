@@ -1,4 +1,0 @@
-package broadcaster
-
-func Server() {
-}
