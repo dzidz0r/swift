@@ -2,6 +2,8 @@ package broadcaster
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"sync"
 	"time"
 )
@@ -25,8 +27,33 @@ func (msg broadcastMessage) String() string {
 var wg sync.WaitGroup
 
 func StartServer() {
+	addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", SERVERPORT))
+	if err != nil {
+		log.Println(err)
+	}
+	listener, err := net.Listen("tcp4", addr.String())
+	wg.Add(2)
 
-	wg.Add(1)
+	if err != nil {
+		log.Println(err)
+	}
+
+	conn, err := listener.Accept()
+	go func() {
+		defer wg.Done()
+		if err != nil {
+			log.Println(err)
+		}
+		conn.SetDeadline(time.Now().Add(time.Second * SERVERTIMEOUT))
+		for {
+			_, err := conn.Write([]byte("this is main"))
+			if err != nil {
+				return
+			}
+		}
+
+	}()
+
 	go func() {
 		defer wg.Done()
 		broadcast(
