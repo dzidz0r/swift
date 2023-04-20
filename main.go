@@ -21,10 +21,9 @@ func main() {
 		time.Sleep(time.Second * 2)
 		cli.Connect(":5050")
 
-		// time.AfterFunc(time.Second*2, func() {
-		// cli.Send(file)
-		// })
-		cli.Receive()
+		time.AfterFunc(time.Second*2, func() {
+			cli.Send(file)
+		})
 
 	}()
 	//

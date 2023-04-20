@@ -3,10 +3,12 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"path"
 )
 
 type client struct {
@@ -34,6 +36,10 @@ func (c *client) Send(filePath string) error {
 		log.Println(err)
 		return err
 	}
+
+	// prefix data with filename
+	filename := []byte(fmt.Sprintf("%v$$$$", path.Base(filePath)))
+	data = append(filename, data...)
 
 	// send file size
 	err = binary.Write(c.conn, binary.LittleEndian, int64(len(data)))

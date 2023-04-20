@@ -75,14 +75,7 @@ func (s *server) Receive() {
 		log.Fatal(err)
 	}
 
-	// receive file name
-	filename := new(bytes.Buffer)
-	_, err = io.Copy(filename, s.conn)
-	if err != nil {
-		fmt.Println("Unable to read fulename")
-	}
-
-	// recieve data
+	// recieve data prefixed with filename
 	data := new(bytes.Buffer)
 	i, err := io.CopyN(data, s.conn, dataSize)
 	if err != nil {
@@ -90,5 +83,15 @@ func (s *server) Receive() {
 	}
 	log.Printf("Received %d bytes from connection", i)
 
-	os.WriteFile(filename.String(), data.Bytes(), os.ModePerm)
+	// seperate data from filename
+	filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
+	if !ok {
+		log.Println("Unable to parse file... ")
+	}
+
+	err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
