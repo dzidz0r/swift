@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path"
 )
 
 const (
@@ -47,6 +48,10 @@ func (s *server) Send(filePath string) error {
 		return err
 	}
 
+	// prefix data with filename
+	filename := []byte(fmt.Sprintf("%v$$$$", path.Base(filePath)))
+	data = append(filename, data...)
+
 	// send file size
 	err = binary.Write(s.conn, binary.LittleEndian, int64(len(data)))
 	if err != nil {
@@ -54,14 +59,14 @@ func (s *server) Send(filePath string) error {
 		return err
 	}
 
-	// send file
+	// send data
 	i, err := io.CopyN(s.conn, bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	log.Printf("Written %d/%d bytes to the connection", i, len(data))
+	log.Printf("File sent successfully: %d / %d bytes written", i, len(data))
 
 	return nil
 }

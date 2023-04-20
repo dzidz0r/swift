@@ -69,7 +69,7 @@ func (c *client) Receive() {
 		log.Fatal(err)
 	}
 
-	// recieve data
+	// recieve data prefixed with filename
 	data := new(bytes.Buffer)
 	i, err := io.CopyN(data, c.conn, dataSize)
 	if err != nil {
@@ -77,6 +77,17 @@ func (c *client) Receive() {
 	}
 	log.Printf("Received %d bytes from connection", i)
 
+	// seperate data from filename
+	filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
+	if !ok {
+		log.Println("Unable to parse file... ")
+	}
+
+	err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (c *client) Disconnect() error {
