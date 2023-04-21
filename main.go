@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/321swift/swift/server"
@@ -10,5 +9,7 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	fmt.Println(server.NewServer().GetActiveIps())
+	serv := server.NewServer()
+	serv.Broadcast()
+
 }

@@ -1,36 +1,61 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"strings"
+	"sync"
 )
 
 func (s *server) Broadcast() {
+	var wg sync.WaitGroup
+	ipnets := s.GetActiveIps()
+	addrs := make([]net.IP, 0)
+	for _, inet := range ipnets {
+		ip, err := s.calcBroadcastAddress(inet)
+		if err != nil {
+			continue
+		}
+		addrs = append(addrs, ip)
+	}
 
+	wg.Add(20 * len(addrs))
+	for i := 0; i < 20; i++ {
+		for j, addr := range addrs {
+			go func(addr net.IP, offset int) {
+				defer wg.Done()
+				fmt.Println(offset)
+				s.sendMessage(addr, 20200+offset, fmt.Sprintf("%s:%d", s.hostname, s.serverPort))
+			}(addr, j+i)
+		}
+	}
+	fmt.Println("Broadcast sent out")
+	wg.Wait()
 }
 
-func (s *server) GetActiveIps() []*net.IPNet {
+func (s *server) GetActiveIps() []net.IPNet {
 	interfaces, err := s.getUpnRunninginterfaces()
-	var addrs []*net.IPNet
+	var addrs []net.IPNet
 	if err != nil {
 		panic("error while getting up and runnign interfaces")
 	}
 	for _, interf := range interfaces {
 		addr := s.extractIPV4Address(interf)
 		if addr != nil {
-			addrs = append(addrs, addr)
+			addrs = append(addrs, *addr)
 		}
 	}
 	return addrs
 }
 
-// GetBroadcastAddress calculates the broadcast address for a given IP address and subnet
-// in the format ip/subnet
-func (s *server) calcBroadcastAddress(ipAddress string) (string, error) {
+// GetBroadcastAddress calculates the broadcast
+// address for a given IP address and subnet
+// in the format: ip/subnet
+func (s *server) calcBroadcastAddress(ipSub net.IPNet) (net.IP, error) {
 	// Parse the IP address and subnet
-	ip, ipNet, err := net.ParseCIDR(ipAddress)
+	ip, ipNet, err := net.ParseCIDR(ipSub.String())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Get the network size in bits
@@ -44,7 +69,7 @@ func (s *server) calcBroadcastAddress(ipAddress string) (string, error) {
 		broadcast[i] = network[i] | ^mask[i]
 	}
 
-	return broadcast.String(), nil
+	return broadcast, nil
 }
 
 func (s *server) extractIPV4Address(iface net.Interface) *net.IPNet {
@@ -79,4 +104,31 @@ func (s *server) getUpnRunninginterfaces() ([]net.Interface, error) {
 		}
 	}
 	return upnRunning, nil
+}
+
+// SendMessage sends a message on a given IP address and port number
+func (s *server) sendMessage(address net.IP, broadcastPort int, message string) error {
+	// convert message to a byte array
+	messageInBytes := []byte(message)
+
+	// Resolve the IP address and port
+	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", address.String(), broadcastPort))
+	if err != nil {
+		return err
+	}
+
+	// Create the UDP socket
+	conn, err := net.DialUDP("udp", nil, udpAddr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// Send the message
+	_, err = conn.Write(messageInBytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

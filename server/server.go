@@ -16,15 +16,17 @@ const (
 )
 
 type server struct {
-	conn     []net.Conn
-	hostname string
-	listener net.Listener
+	conn       []net.Conn
+	hostname   string
+	listener   net.Listener
+	serverPort int
 }
 
 func NewServer() *server {
 	name, _ := os.Hostname()
 	return &server{
-		hostname: name,
+		hostname:   name,
+		serverPort: _PORT,
 	}
 }
 
