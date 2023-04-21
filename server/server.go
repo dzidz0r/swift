@@ -28,10 +28,6 @@ func NewServer() *server {
 	}
 }
 
-func (s *server) Broadcast() {
-
-}
-
 func (s *server) Start() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", _PORT))
 	if err != nil {
