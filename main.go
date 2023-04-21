@@ -13,23 +13,33 @@ var wg sync.WaitGroup
 func main() {
 
 	file := "./go.mod"
-	cli := client.NewClient()
+	cl1 := client.NewClient()
+	cl2 := client.NewClient()
+	cl3 := client.NewClient()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		time.Sleep(time.Second * 2)
-		cli.Connect(":5050")
+		time.Sleep(time.Second)
+		cl1.Connect(":5050")
+		cl2.Connect(":5050")
+		cl3.Connect(":5050")
 
-		time.AfterFunc(time.Second*2, func() {
-			cli.Send(file)
-		})
+		// time.AfterFunc(time.Second*2, func() {
+		// cl1.Send(file)
+		// })
 
 	}()
 	//
 	srvr := server.NewServer()
-	srvr.Start()
-	// srvr.Receive()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srvr.Start()
+	}()
+	time.AfterFunc(time.Second*3, func() {
+		srvr.Send(file)
+	})
 
 	wg.Wait()
 }

@@ -16,7 +16,7 @@ const (
 )
 
 type server struct {
-	addr     net.Addr
+	conn     []net.Conn
 	hostname string
 	listener net.Listener
 }
@@ -44,6 +44,8 @@ func (s *server) Start() {
 		if err != nil {
 			log.Fatal("accepting connection err: ", err)
 		}
+		log.Println("Connection made: ", conn)
+		s.conn = append(s.conn, conn)
 		go s.readLoop(conn)
 	}
 }
@@ -64,7 +66,7 @@ func (s *server) readLoop(conn net.Conn) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Received %d bytes from connection", i)
+		log.Printf("Received %d bytes from %v", i, conn.RemoteAddr())
 
 		// seperate data from filename
 		filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
@@ -81,7 +83,9 @@ func (s *server) readLoop(conn net.Conn) {
 
 }
 
-func (s *server) Send(conn net.Conn, filePath string) error {
+func (s *server) Send(filePath string) error {
+	fmt.Println("sending")
+	fmt.Println(s.conn)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Println(err)
@@ -93,22 +97,35 @@ func (s *server) Send(conn net.Conn, filePath string) error {
 	data = append(filename, data...)
 
 	// send file size
-	err = binary.Write(conn, binary.LittleEndian, int64(len(data)))
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+	for _, conn := range s.conn {
+		go func(conn net.Conn) {
+			err = binary.Write(conn, binary.LittleEndian, int64(len(data)))
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-	// send data
-	i, err := io.CopyN(conn, bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		log.Println(err)
-		return err
+			// send data
+			i, err := io.CopyN(conn, bytes.NewReader(data), int64(len(data)))
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			log.Printf("File sent successfully: %d / %d bytes written", i, len(data))
+		}(conn)
 	}
-
-	log.Printf("File sent successfully: %d / %d bytes written", i, len(data))
 
 	return nil
+}
+
+func (s *server) Shutdown() {
+	defer fmt.Println("all connections closed")
+	for _, conn := range s.conn {
+		err := conn.Close()
+		if err != nil {
+			continue
+		}
+	}
 }
 
 // func (s *server) Receive() {
