@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 func (s *server) Broadcast() {
@@ -28,6 +29,7 @@ func (s *server) Broadcast() {
 				s.sendMessage(addr, 20200+offset, fmt.Sprintf("%s:%d", s.hostname, s.serverPort))
 			}(addr, j+i)
 		}
+		time.Sleep(time.Second)
 	}
 	fmt.Println("Broadcast sent out")
 	wg.Wait()
