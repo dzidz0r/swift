@@ -29,7 +29,7 @@ func main() {
 	//
 	srvr := server.NewServer()
 	srvr.Start()
-	srvr.Receive()
+	// srvr.Receive()
 
 	wg.Wait()
 }

@@ -16,11 +16,20 @@ const (
 )
 
 type server struct {
-	conn net.Conn
+	addr     net.Addr
+	hostname string
+	listener net.Listener
 }
 
 func NewServer() *server {
-	return &server{}
+	name, _ := os.Hostname()
+	return &server{
+		hostname: name,
+	}
+}
+
+func (s *server) Broadcast() {
+
 }
 
 func (s *server) Start() {
@@ -28,20 +37,51 @@ func (s *server) Start() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	s.listener = listener
 
 	for {
-		conn, err := listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
-			log.Fatal(err)
-		} else {
-			log.Printf("Connection established: %v", conn)
-			s.conn = conn
-			break
+			log.Fatal("accepting connection err: ", err)
 		}
+		go s.readLoop(conn)
 	}
 }
 
-func (s *server) Send(filePath string) error {
+func (s *server) readLoop(conn net.Conn) {
+	for {
+
+		// receive file size
+		var dataSize int64
+		err := binary.Read(conn, binary.LittleEndian, &dataSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// recieve data prefixed with filename
+		data := new(bytes.Buffer)
+		i, err := io.CopyN(data, conn, dataSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Received %d bytes from connection", i)
+
+		// seperate data from filename
+		filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
+		if !ok {
+			log.Println("Unable to parse file... ")
+		}
+
+		err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+}
+
+func (s *server) Send(conn net.Conn, filePath string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Println(err)
@@ -53,14 +93,14 @@ func (s *server) Send(filePath string) error {
 	data = append(filename, data...)
 
 	// send file size
-	err = binary.Write(s.conn, binary.LittleEndian, int64(len(data)))
+	err = binary.Write(conn, binary.LittleEndian, int64(len(data)))
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
 	// send data
-	i, err := io.CopyN(s.conn, bytes.NewReader(data), int64(len(data)))
+	i, err := io.CopyN(conn, bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		log.Println(err)
 		return err
@@ -71,32 +111,32 @@ func (s *server) Send(filePath string) error {
 	return nil
 }
 
-func (s *server) Receive() {
+// func (s *server) Receive() {
 
-	// receive file size
-	var dataSize int64
-	err := binary.Read(s.conn, binary.LittleEndian, &dataSize)
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	// receive file size
+// 	var dataSize int64
+// 	err := binary.Read(s.conn, binary.LittleEndian, &dataSize)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	// recieve data prefixed with filename
-	data := new(bytes.Buffer)
-	i, err := io.CopyN(data, s.conn, dataSize)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("Received %d bytes from connection", i)
+// 	// recieve data prefixed with filename
+// 	data := new(bytes.Buffer)
+// 	i, err := io.CopyN(data, s.conn, dataSize)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	log.Printf("Received %d bytes from connection", i)
 
-	// seperate data from filename
-	filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
-	if !ok {
-		log.Println("Unable to parse file... ")
-	}
+// 	// seperate data from filename
+// 	filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
+// 	if !ok {
+// 		log.Println("Unable to parse file... ")
+// 	}
 
-	err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+// 	err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// }
