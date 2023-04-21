@@ -51,8 +51,9 @@ func (s *server) Start() {
 }
 
 func (s *server) readLoop(conn net.Conn) {
-	for {
+	defer conn.Close()
 
+	for {
 		// receive file size
 		var dataSize int64
 		err := binary.Read(conn, binary.LittleEndian, &dataSize)

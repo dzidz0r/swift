@@ -6,18 +6,21 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"path"
 )
 
 type client struct {
-	conn net.Conn
-	Conn net.Conn
+	conn     net.Conn
+	hostname string
 }
 
 func NewClient() *client {
-	return &client{}
+	return &client{
+		hostname: fmt.Sprint("", rand.Intn(20)),
+	}
 }
 
 func (c *client) Connect(address string) {
@@ -26,8 +29,46 @@ func (c *client) Connect(address string) {
 		log.Fatal(err)
 	}
 
-	c.Conn = conn
 	c.conn = conn
+
+	// send hostname
+	go c.readLoop(conn)
+
+}
+
+func (c *client) readLoop(conn net.Conn) {
+	defer conn.Close()
+	for {
+
+		// receive file size
+		var dataSize int64
+		err := binary.Read(conn, binary.LittleEndian, &dataSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// recieve data prefixed with filename
+		data := new(bytes.Buffer)
+		i, err := io.CopyN(data, conn, dataSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Received %d bytes from %v", i, conn.RemoteAddr())
+
+		// seperate data from filename
+		filename, fileContent, ok := bytes.Cut(data.Bytes(), []byte("$$$$"))
+		if !ok {
+			log.Println("Unable to parse file... ")
+		}
+
+		// err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+		err = os.WriteFile(fmt.Sprintf("./%s%s", c.hostname, filename), fileContent, os.ModePerm)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
 
 func (c *client) Send(filePath string) error {
@@ -83,7 +124,7 @@ func (c *client) Receive() {
 		log.Println("Unable to parse file... ")
 	}
 
-	err = os.WriteFile(fmt.Sprintf("./1%s", filename), fileContent, os.ModePerm)
+	err = os.WriteFile(fmt.Sprintf("./%s%s", c.hostname, filename), fileContent, os.ModePerm)
 
 	if err != nil {
 		log.Fatal(err)
