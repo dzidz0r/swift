@@ -19,13 +19,13 @@ func (s *server) Broadcast() {
 		}
 		addrs = append(addrs, ip)
 	}
+	fmt.Println("Sending broadcast")
 
 	wg.Add(20 * len(addrs))
 	for i := 0; i < 20; i++ {
 		for j, addr := range addrs {
 			go func(addr net.IP, offset int) {
 				defer wg.Done()
-				fmt.Println(offset)
 				s.sendMessage(addr, 20200+offset, fmt.Sprintf("%s:%d", s.hostname, s.serverPort))
 			}(addr, j+i)
 		}

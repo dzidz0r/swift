@@ -1,15 +1,10 @@
+/*
+Copyright © 2023 SWIFT_DEVS <https://github.com/321swift>
+*/
 package main
 
-import (
-	"sync"
-
-	"github.com/321swift/swift/server"
-)
-
-var wg sync.WaitGroup
+import "github.com/321swift/swift/cmd"
 
 func main() {
-	serv := server.NewServer()
-	serv.Broadcast()
-
+	cmd.Execute()
 }

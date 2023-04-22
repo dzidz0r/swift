@@ -10,17 +10,56 @@ import (
 	"net"
 	"os"
 	"path"
+	"time"
 )
 
 type client struct {
-	conn     net.Conn
-	hostname string
+	conn                net.Conn
+	hostname            string
+	broadcastListenport int
 }
 
 func NewClient() *client {
 	return &client{
-		hostname: fmt.Sprint("", rand.Intn(20)),
+		hostname:            fmt.Sprint("", rand.Intn(20)),
+		broadcastListenport: 5050,
 	}
+}
+
+func (c *client) Listen() {
+	// Resolve the broadcast address and port
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", c.broadcastListenport))
+	if err != nil {
+		return
+	}
+
+	// Create a UDP socket to listen on
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	// Set a timeout for the socket
+	conn.SetReadDeadline(time.Now().Add(time.Second * 30))
+
+	println("now listening on port ", c.broadcastListenport)
+	// Wait for a message
+	buffer := new(bytes.Buffer)
+	n, remoteAddr, err := conn.ReadFromUDP(buffer.Bytes())
+	fmt.Println(n, remoteAddr, buffer.String())
+	if err != nil {
+		return
+	}
+
+	/*
+		buffer.String
+
+		ipnet := fmt.Sprintf("%v:%s", remoteAddr.IP.String(), strings.Split(buffer.String(), ":")[1])
+
+		chan <- ipnet
+	*/
+
 }
 
 func (c *client) Connect(address string) {

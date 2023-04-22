@@ -9,29 +9,37 @@ import (
 	"net"
 	"os"
 	"path"
-)
-
-const (
-	_PORT = 5050
+	"time"
 )
 
 type server struct {
-	conn       []net.Conn
-	hostname   string
-	listener   net.Listener
-	serverPort int
+	conn          []net.Conn
+	hostname      string
+	serverPort    int
+	listener      net.Listener
+	serverTimeout time.Duration
+	timer         *time.Timer
 }
 
 func NewServer() *server {
 	name, _ := os.Hostname()
 	return &server{
-		hostname:   name,
-		serverPort: _PORT,
+		hostname:      name,
+		serverPort:    3000,
+		serverTimeout: time.Second * 10,
 	}
 }
-
 func (s *server) Start() {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", _PORT))
+	go func() {
+		s.Broadcast()
+	}()
+
+	s.timer = time.AfterFunc(s.serverTimeout, func() {
+		fmt.Println("Server timeout... shutting down")
+		s.Shutdown()
+		os.Exit(1)
+	})
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.serverPort))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,8 +50,10 @@ func (s *server) Start() {
 		if err != nil {
 			log.Fatal("accepting connection err: ", err)
 		}
+		s.timer.Stop()
 		log.Println("Connection made: ", conn)
 		s.conn = append(s.conn, conn)
+		conn.Write([]byte("Welcome to this "))
 		go s.readLoop(conn)
 	}
 }
@@ -119,6 +129,7 @@ func (s *server) Send(filePath string) error {
 
 func (s *server) Shutdown() {
 	defer fmt.Println("all connections closed")
+	s.listener.Close()
 	for _, conn := range s.conn {
 		err := conn.Close()
 		if err != nil {
