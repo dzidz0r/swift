@@ -3,8 +3,11 @@ Copyright © 2023 SWIFT_DEVS <https://github.com/321swift>
 */
 package main
 
-import "github.com/321swift/swift/cmd"
+import (
+	"github.com/321swift/swift/uiServer"
+)
 
 func main() {
-	cmd.Execute()
+	// cmd.Execute()
+	uiServer.Main()
 }

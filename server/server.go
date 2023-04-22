@@ -105,8 +105,8 @@ func (s *server) Send(filePath string) error {
 	filename := []byte(fmt.Sprintf("%v$$$$", path.Base(filePath)))
 	data = append(filename, data...)
 
-	// send file size
 	for _, conn := range s.conn {
+		// send file size
 		go func(conn net.Conn) {
 			err = binary.Write(conn, binary.LittleEndian, int64(len(data)))
 			if err != nil {
